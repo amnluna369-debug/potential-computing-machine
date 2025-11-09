@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Slot Machine</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 2rem;
+      background: linear-gradient(to bottom, #111, #222);
+      color: #f4f4f4;
+    }
+    .reel {
+      display: inline-block;
+      font-size: 3rem;
+      width: 3rem;
+      height: 3rem;
+      line-height: 3rem;
+      border: 2px solid #555;
+      background-color: #000;
+      color: #FFD700;
+      border-radius: 10px;
+      margin: 0 0.5rem;
+      transition: transform 0.4s ease-in-out;
+    }
+    .spin {
+      transform: rotateX(360deg);
+    }
+    .button {
+      margin-top: 1rem;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      background-color: #FFD700;
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .button:hover {
+      background-color: #FFC300;
+    }
+    #result {
+      margin-top: 1rem;
+      font-size: 1.25rem;
+    }
+    #balance {
+      margin-top: 1rem;
+      font-size: 1.5rem;
+    }
+    #bet {
+      width: 60px;
+      text-align: center;
+      background: #111;
+      color: #FFD700;
+      border: 1px solid #555;
+      border-radius: 5px;
+    }
+    #bonus {
+      margin-top: 1rem;
+      font-size: 1.25rem;
+      color: #00ff00;
+    }
+    #minigame {
+      display: none;
+      margin-top: 2rem;
+      border: 2px dashed #FFD700;
+      padding: 1rem;
+      background: #333;
+      border-radius: 10px;
+    }
+    .minigame-btn {
+      margin: 0.5rem;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      background-color: #222;
+      color: #FFD700;
+      border: 1px solid #FFD700;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .minigame-btn:hover {
+      background-color: #444;
+    }
+  </style>
+</head>
+<body>
+  <h1 style="color:#FFD700;">Slot Machine</h1>
+  <div id="balance">Balance: 100 credits</div>
+  <div>
+    Bet: <input type="number" id="bet" value="1" min="1">
+  </div>
+  <div id="reels">
+    <span class="reel">-</span>
+    <span class="reel">-</span>
+    <span class="reel">-</span>
+  </div>
+  <div>
+    <button class="button" onclick="spin()">Spin</button>
+  </div>
+  <div id="result"></div>
+  <div id="bonus"></div>
+
+  <div id="minigame">
+    <p><strong>Mini-Game:</strong> Pick one of the boxes for a random bonus!</p>
+    <button class="minigame-btn" onclick="playMinigame(1)">Box 1</button>
+    <button class="minigame-btn" onclick="playMinigame(2)">Box 2</button>
+    <button class="minigame-btn" onclick="playMinigame(3)">Box 3</button>
+  </div>
+
+  <audio id="spin-sound" src="https://www.soundjay.com/button/sounds/button-29.mp3"></audio>
+  <audio id="win-sound" src="https://www.soundjay.com/misc/sounds/bell-ringing-01.mp3"></audio>
+  <audio id="bonus-sound" src="https://www.soundjay.com/button/sounds/button-3.mp3"></audio>
+  <audio id="special-sound" src="https://www.soundjay.com/misc/sounds/cash-register-01.mp3"></audio>
+
+  <script>
+    const symbols = ['A', 'B', 'C', 'D', 'E', '★', '♛'];
+    const weights = [2, 3, 4, 5, 6, 1, 1];
+    const payoutTable = {
+      'AAA': 100,
+      'BBB': 50,
+      'CCC': 20,
+      'DDD': 10,
+      'EEE': 5,
+      '♛♛♛': 200
+    };
+    let balance = 100;
+
+    function updateBalanceDisplay() {
+      document.getElementById('balance').textContent = `Balance: ${balance} credits`;
+    }
+
+    function weightedRandomSymbol() {
+      const totalWeight = weights.reduce((a, b) => a + b, 0);
+      let rand = Math.floor(Math.random() * totalWeight);
+      for (let i = 0; i < weights.length; i++) {
+        if (rand < weights[i]) return symbols[i];
+        rand -= weights[i];
+      }
+    }
+
+    function spin() {
+      const spinSound = document.getElementById('spin-sound');
+      const winSound = document.getElementById('win-sound');
+      const bonusSound = document.getElementById('bonus-sound');
+      const specialSound = document.getElementById('special-sound');
+      const bet = parseInt(document.getElementById('bet').value);
+      const bonusDisplay = document.getElementById('bonus');
+      const minigame = document.getElementById('minigame');
+      bonusDisplay.textContent = "";
+      minigame.style.display = "none";
+
+      if (bet > balance || bet <= 0) {
+        document.getElementById('result').textContent = "Invalid bet amount.";
+        return;
+      }
+      spinSound.play();
+      const reelElems = document.querySelectorAll('.reel');
+      const result = [];
+      reelElems.forEach(elem => {
+        elem.classList.remove('spin');
+        void elem.offsetWidth;
+        elem.classList.add('spin');
+      });
+
+      setTimeout(() => {
+        let bonusCount = 0;
+        for (let i = 0; i < 3; i++) {
+          const symbol = weightedRandomSymbol();
+          reelElems[i].textContent = symbol;
+          result.push(symbol);
+          if (symbol === '★') bonusCount++;
+        }
+        balance -= bet;
+        const joined = result.join('');
+        const payout = (payoutTable[joined] || 0) * bet;
+        balance += payout;
+
+        if (payout > 0) winSound.play();
+        if (joined === '♛♛♛') specialSound.play();
+
+        document.getElementById('result').textContent = payout > 0 ? `You win ${payout} credits!` : 'No win. Try again!';
+
+        if (bonusCount === 2) {
+          const bonusReward = bonusCount * 10;
+          balance += bonusReward;
+          bonusDisplay.textContent = `BONUS! You got ${bonusCount} ★ symbols and won ${bonusReward} bonus credits!`;
+          bonusSound.play();
+        } else if (bonusCount >= 3) {
+          bonusDisplay.textContent = `MINI-GAME UNLOCKED! Pick a box to win more!`;
+          minigame.style.display = "block";
+          bonusSound.play();
+        }
+
+        updateBalanceDisplay();
+      }, 500);
+    }
+
+    function playMinigame(choice) {
+      const rewards = [15, 25, 50];
+      const reward = rewards[Math.floor(Math.random() * rewards.length)];
+      balance += reward;
+      document.getElementById('bonus').textContent = `You picked Box ${choice} and won ${reward} credits!`;
+      document.getElementById('minigame').style.display = "none";
+      updateBalanceDisplay();
+    }
+
+    updateBalanceDisplay();
+  </script>
+</body>
+</html>
